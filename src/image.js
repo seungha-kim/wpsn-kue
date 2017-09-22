@@ -18,9 +18,25 @@ const supportedImageExt = ['png', 'jpg']
 function uploadImageFile(buffer) {
   return new Promise((resolve, reject) => {
     // 파일 타입 체크해서 png, jpg가 아니면 에러 발생
-
+    const {ext, mime} = fileType(buffer)
+    if (!supportedImageExt.includes(ext)) {
+      return reject(new Error('지원하는 파일 형식이 아닙니다.'))
+    }
     // s3에 업로드 후 Location 반환
-
+    s3.upload({
+      ACL: 'public-read', // 익명의 사용자도 파일 경로만 알면 읽기 가능하도록 설정
+      Body: buffer,
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: `${uuid.v4()}.${ext}`,
+      ContentDisposition: 'inline', // Content-Disposition 헤더
+      ContentType: mime // Content-Type 헤더
+    }, (err, data) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(data.Location)
+      }
+    })
   })
 }
 
@@ -32,9 +48,12 @@ function uploadImageFile(buffer) {
 function uploadOriginalFile(file) {
   return new Promise((resolve, reject) => {
     // 1MB 보다 크면 에러 발생
-
-    // 이미지 업로드
-
+    if (file.size > 1024 * 1024) {
+      reject(new Error('파일의 크기는 1MB를 넘을 수 없습니다.'))
+    } else {
+      // 이미지 업로드
+      resolve(uploadImageFile(file.buffer))
+    }
   })
 }
 
@@ -46,7 +65,15 @@ function uploadOriginalFile(file) {
  */
 function createThumbnailJob(queue, id) {
   return new Promise((resolve, reject) => {
-
+    queue.create('thumbnail', {id})
+      .removeOnComplete(true)
+      .save(err => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
   })
 }
 
