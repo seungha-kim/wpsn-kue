@@ -14,7 +14,7 @@ queue.process('thumbnail', async (job, done) => {
     // 이미지 항목 정보를 데이터베이스에서 가져온 후
     const imageEntry = await query.getImageEntryById(id)
     const res = await axios.get(imageEntry.original_url, {
-      responseType: 'arrayBuffer'
+      responseType: 'arraybuffer'
     })
     const buffer = await sharp(res.data)
       .resize(200, 200)
